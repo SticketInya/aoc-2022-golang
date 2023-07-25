@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -92,7 +94,7 @@ func task_1() {
 
 	// }
 	cache := stringCache{
-		cache: map[string]int{},
+		cache: map[uuid.UUID]int{},
 	}
 	cache.calculateSize(fileSystem)
 
@@ -104,7 +106,7 @@ func task_1() {
 
 }
 
-func calculateTotal(values map[string]int, limit int) int {
+func calculateTotal(values map[uuid.UUID]int, limit int) int {
 	total := 0
 	for _, val := range values {
 		if val <= limit {
@@ -115,7 +117,7 @@ func calculateTotal(values map[string]int, limit int) int {
 }
 
 type stringCache struct {
-	cache map[string]int
+	cache map[uuid.UUID]int
 }
 
 func (s *stringCache) calculateSize(root directory) int {
@@ -124,14 +126,9 @@ func (s *stringCache) calculateSize(root directory) int {
 		return root.FileSize
 	}
 
-	cachedVal, ok := s.cache[root.Name]
-	if ok {
-		return cachedVal
-	}
-
 	for _, childDir := range root.Children {
 		size += s.calculateSize(*childDir)
 	}
-	s.cache[root.Name] = size
+	s.cache[uuid.New()] = size
 	return size
 }
