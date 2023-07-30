@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -18,6 +19,7 @@ func main() {
 }
 
 type directory struct {
+	Id       uuid.UUID
 	Name     string
 	FileSize int
 	IsFile   bool
@@ -53,6 +55,7 @@ func task_1() {
 
 			if commandTarget == "/" {
 				fileSystem = directory{
+					Id:       uuid.New(),
 					Name:     commandTarget,
 					Children: make(map[string]*directory),
 				}
@@ -68,6 +71,7 @@ func task_1() {
 			dirName := line[1]
 
 			current.Children[dirName] = &directory{
+				Id:       uuid.New(),
 				Name:     dirName,
 				Parent:   current,
 				Children: make(map[string]*directory),
@@ -80,6 +84,7 @@ func task_1() {
 
 			size, _ := strconv.Atoi(line[0])
 			current.Children[fileName] = &directory{
+				Id:       uuid.New(),
 				Name:     fileName,
 				FileSize: size,
 				IsFile:   true,
@@ -98,11 +103,15 @@ func task_1() {
 	}
 	cache.calculateSize(fileSystem)
 
-	for key, val := range cache.cache {
-		fmt.Printf("dir %s size: %v\n", key, val)
-	}
+	// for key, val := range cache.cache {
+	// 	fmt.Printf("dir %s size: %v\n", key, val)
+	// }
 
-	fmt.Printf("The result: %v\n", calculateTotal(cache.cache, 100000))
+	fmt.Printf("The result for task 1: %v\n", calculateTotal(cache.cache, 100000))
+
+	sizeToDelete := getSizeToDelete(fileSystem, cache.cache)
+
+	fmt.Printf("The result for task 2: %v\n", getTheSmallestDirectoryToDelete(sizeToDelete, cache.cache))
 
 }
 
@@ -114,6 +123,31 @@ func calculateTotal(values map[uuid.UUID]int, limit int) int {
 		}
 	}
 	return total
+}
+
+func getSizeToDelete(root directory, sizesCache map[uuid.UUID]int) int {
+	const TOTAL_DISK_SPACE = 70000000
+	const MIN_FREE_SPACE = 30000000
+	size, ok := sizesCache[root.Id]
+	if !ok {
+		return -1
+	}
+
+	return MIN_FREE_SPACE - (TOTAL_DISK_SPACE - size)
+}
+
+func getTheSmallestDirectoryToDelete(sizeToDelete int, dirCache map[uuid.UUID]int) int {
+	possibleSizes := []int{}
+
+	for _, size := range dirCache {
+		if size >= sizeToDelete {
+			possibleSizes = append(possibleSizes, size)
+		}
+	}
+
+	sort.Ints(possibleSizes)
+
+	return possibleSizes[0]
 }
 
 type stringCache struct {
@@ -129,6 +163,6 @@ func (s *stringCache) calculateSize(root directory) int {
 	for _, childDir := range root.Children {
 		size += s.calculateSize(*childDir)
 	}
-	s.cache[uuid.New()] = size
+	s.cache[root.Id] = size
 	return size
 }
