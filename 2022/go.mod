@@ -1,5 +1,5 @@
-module github.com/sticketinya/aoc-2022-golang
+module github.com/sticketinya/aoc-golang
 
 go 1.20
 
-require github.com/google/uuid v1.3.0 // indirect
+require github.com/google/uuid v1.3.0
