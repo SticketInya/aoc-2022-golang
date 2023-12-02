@@ -9,26 +9,26 @@ import (
 	"strings"
 )
 
-func main() {
-	fmt.Println("Advent of Code 2023 - Day 2")
-
-	task1()
-	task2()
-}
-
 type Bag struct {
 	Red   int
 	Green int
 	Blue  int
 }
 
-func task1() {
+type Game struct {
+	Index  int
+	Rounds []Bag
+}
+
+func main() {
+	fmt.Println("Advent of Code 2023 - Day 2")
+
 	file, err := os.ReadFile("input.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	lines := strings.Split(string(file), "\n")
+	parsed := string(file)
 
 	bagOfCubes := Bag{
 		Red:   12,
@@ -36,87 +36,48 @@ func task1() {
 		Blue:  14,
 	}
 
+	total := GetSumOfPossibleGameIndeces(parsed, &bagOfCubes)
+	fmt.Println("Total possible game indeces: ", total)
+
+	power := GetSumOfPowerOfGames(parsed)
+	fmt.Println("Total power of games: ", power)
+}
+
+// Part 1 of the advent of code puzzle
+// Sums the indeces of the games that are possible to play
+func GetSumOfPossibleGameIndeces(input string, sourceBag *Bag) int {
+	lines := strings.Split(input, "\n")
+
 	totalPossibleGameIndeces := 0
-	for i, line := range lines {
-		game := strings.Split(line, ":")
-		if len(game) != 2 {
-			log.Fatal("Invalid game line at ", i+1)
-		}
-
-		plays := strings.Split(game[1], ";")
-
-		hasInvalidGame := false
-		for _, play := range plays {
-			re := regexp.MustCompile(`(\d*\s(blue|green|red))`)
-			matches := re.FindAllString(play, -1)
-
-			gameBag := BagFromStringArray(matches)
-			if !bagOfCubes.isGamePossible(gameBag) {
-				hasInvalidGame = true
-				break
-			}
-
-		}
-		if !hasInvalidGame {
-			totalPossibleGameIndeces += i + 1
-		}
-
-	}
-
-	fmt.Println("Total possible game indeces: ", totalPossibleGameIndeces)
-}
-
-func task2() {
-	file, err := os.ReadFile("input.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	lines := strings.Split(string(file), "\n")
-
-	sumOfPowerofCubes := 0
 	for _, line := range lines {
-		game := strings.Split(line, ":")
-		if len(game) != 2 {
-			log.Fatal("Invalid game line")
+		game := NewGame(line)
+
+		if game.isPossibleForBag(sourceBag) {
+			totalPossibleGameIndeces += game.Index
 		}
-
-		plays := strings.Split(game[1], ";")
-
-		minBag := Bag{
-			Red:   0,
-			Green: 0,
-			Blue:  0,
-		}
-		for _, play := range plays {
-			re := regexp.MustCompile(`(\d*\s(blue|green|red))`)
-			matches := re.FindAllString(play, -1)
-
-			gameBag := BagFromStringArray(matches)
-
-			if gameBag.Red > minBag.Red {
-				minBag.Red = gameBag.Red
-			}
-			if gameBag.Green > minBag.Green {
-				minBag.Green = gameBag.Green
-			}
-			if gameBag.Blue > minBag.Blue {
-				minBag.Blue = gameBag.Blue
-			}
-		}
-		sumOfPowerofCubes += minBag.getPowerOfBag()
 	}
 
-	fmt.Println("Sum of power of cubes: ", sumOfPowerofCubes)
-
+	return totalPossibleGameIndeces
 }
 
-func (b *Bag) isGamePossible(bagLike Bag) bool {
-	if b.Red >= bagLike.Red && b.Green >= bagLike.Green && b.Blue >= bagLike.Blue {
-		return true
+// Part 2 of the advent of code puzzle
+// Sums the power of the games based on the minimum number
+// of each cubed required for the game to be possible.
+func GetSumOfPowerOfGames(input string) int {
+	lines := strings.Split(input, "\n")
+
+	totalPower := 0
+	for _, line := range lines {
+		game := NewGame(line)
+		minBag := game.getMinimumPossibleBag()
+		totalPower += minBag.getPowerOfBag()
 	}
 
-	return false
+	return totalPower
+}
+
+func (b *Bag) isSubsetOfBag(other *Bag) bool {
+	return b.Red <= other.Red && b.Green <= other.Green && b.Blue <= other.Blue
 }
 
 func BagFromStringArray(arr []string) Bag {
@@ -146,4 +107,67 @@ func BagFromStringArray(arr []string) Bag {
 
 func (b *Bag) getPowerOfBag() int {
 	return b.Red * b.Green * b.Blue
+}
+
+func NewGame(s string) Game {
+
+	index, err := GetGameIndex(s)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return Game{
+		Index:  index,
+		Rounds: GetGameRounds(s),
+	}
+}
+
+func GetGameIndex(s string) (int, error) {
+	re := regexp.MustCompile(`(Game\s\d*:)`)
+	match := regexp.MustCompile(`(\d+)`).FindString(re.FindString(s))
+
+	return strconv.Atoi(match)
+}
+
+func GetGameRound(s string) Bag {
+	re := regexp.MustCompile(`(\d*\s(blue|green|red))`)
+	matches := re.FindAllString(s, -1)
+
+	return BagFromStringArray(matches)
+}
+
+func GetGameRounds(s string) []Bag {
+	rounds := strings.Split(strings.Split(s, ":")[1], ";")
+
+	var bags []Bag
+	for _, round := range rounds {
+		bags = append(bags, GetGameRound(round))
+	}
+
+	return bags
+}
+
+func (g *Game) isPossibleForBag(b *Bag) bool {
+	for _, roundBag := range g.Rounds {
+		if !roundBag.isSubsetOfBag(b) {
+			return false
+		}
+	}
+	return true
+}
+
+func (g *Game) getMinimumPossibleBag() Bag {
+	var minBag Bag
+	for _, roundBag := range g.Rounds {
+		if roundBag.Red > minBag.Red {
+			minBag.Red = roundBag.Red
+		}
+		if roundBag.Green > minBag.Green {
+			minBag.Green = roundBag.Green
+		}
+		if roundBag.Blue > minBag.Blue {
+			minBag.Blue = roundBag.Blue
+		}
+	}
+	return minBag
 }
