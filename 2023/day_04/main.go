@@ -26,6 +26,9 @@ func main() {
 
 	totalCopies := getTotalCopiesOfCards(contents)
 	fmt.Println("The total copies of the scratchcards is:", totalCopies)
+
+	totalCopiesDp := getTotalCopiesOfCardsDp(contents)
+	fmt.Println("The total copies of the scratchcards with dp is:", totalCopiesDp)
 }
 
 type ScratchCard struct {
@@ -132,4 +135,40 @@ func getTotalCopiesOfCards(input []string) int {
 	}
 
 	return total
+}
+
+func getTotalCopiesOfCardsDp(input []string) int {
+
+	total := 0
+	cards := []*ScratchCard{}
+	for _, line := range input {
+		cards = append(cards, NewScratchCard(line))
+	}
+
+	copiesMap := map[int]int{}
+	for i := len(cards) - 1; i >= 0; i-- {
+
+		if i != len(cards)-1 {
+			total += copiesMap[i+1]
+		}
+
+		copiesMap[i] = 1
+
+		if i == len(cards)-1 {
+			continue
+		}
+
+		matches := cards[i].getMatches()
+		if matches > 0 {
+			for j := 1; j <= matches; j++ {
+				if i+j >= len(cards) {
+					break
+				}
+				copiesMap[i] += copiesMap[i+j]
+			}
+		}
+
+	}
+
+	return total + copiesMap[0]
 }
